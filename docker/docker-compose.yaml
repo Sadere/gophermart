@@ -1,0 +1,19 @@
+name: gophermart-api
+
+services:
+  api:
+    build: ..
+    ports:
+      - 8080:8080
+    restart: on-failure:10
+    environment:
+      SECRET_KEY: ${APP_SECRET_KEY}
+      DATABASE_URI: postgresql://${POSTGRES_APP_USER}:${POSTGRES_APP_PASS}@postgres:5432/${POSTGRES_APP_DB}
+    depends_on:
+      - postgres
+    networks:
+      - gophermart-network
+
+networks:
+  gophermart-network:
+    driver: bridge
