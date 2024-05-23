@@ -13,6 +13,7 @@ import (
 	"github.com/Sadere/gophermart/internal/auth"
 	"github.com/Sadere/gophermart/internal/config"
 	"github.com/Sadere/gophermart/internal/model"
+	"github.com/Sadere/gophermart/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
@@ -21,7 +22,7 @@ type TestUserRepository struct {
 	registeredUserPwHash string
 }
 
-func (tu *TestUserRepository) CreateUser(ctx context.Context, user model.User) (uint64, error) {
+func (tu *TestUserRepository) Create(ctx context.Context, user model.User) (uint64, error) {
 	if user.Login == "invalid" {
 		return 0, errors.New("test error")
 	}
@@ -62,9 +63,11 @@ func TestAuthHandlers(t *testing.T) {
 
 	assert.NoError(t, err, "Failed to generate test password")
 
-	authHandler := NewAuthHandler(&TestUserRepository{
+	repo := &TestUserRepository{
 		registeredUserPwHash: registeredUserPwHash,
-	}, config.Config{})
+	}
+	service := service.NewUserService(repo)
+	authHandler := NewAuthHandler(service, config.Config{})
 
 	r := gin.New()
 	r.POST("/api/user/register", authHandler.Register)

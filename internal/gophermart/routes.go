@@ -4,6 +4,7 @@ import (
 	"github.com/Sadere/gophermart/internal/handler"
 	"github.com/Sadere/gophermart/internal/middleware"
 	"github.com/Sadere/gophermart/internal/repository"
+	"github.com/Sadere/gophermart/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
 )
@@ -11,10 +12,12 @@ import (
 func (g *GopherMart) SetupRoutes(r *gin.Engine, db *sqlx.DB) {
 
 	userRepo := repository.NewPgUserRepository(db)
-	userHandler := handler.NewAuthHandler(userRepo, g.config)
+	userService := service.NewUserService(userRepo)
+	userHandler := handler.NewAuthHandler(userService, g.config)
 
 	orderRepo := repository.NewPgOrderRepository(db)
-	orderHandler := handler.NewOrderHandler(orderRepo, g.config)
+	orderService := service.NewOrderService(orderRepo)
+	orderHandler := handler.NewOrderHandler(orderService)
 
 	apiMiddleware := middleware.NewMiddleware(userRepo)
 
@@ -29,6 +32,6 @@ func (g *GopherMart) SetupRoutes(r *gin.Engine, db *sqlx.DB) {
 	authRoutes.Use(apiMiddleware.AuthCheck([]byte(g.config.SecretKey)))
 	{
 		authRoutes.POST("/user/orders", orderHandler.SaveOrder)
-		// TODO: implement orders, withdrawals
+		authRoutes.GET("/user/orders", middleware.JSON(), orderHandler.ListOrders)
 	}
 }

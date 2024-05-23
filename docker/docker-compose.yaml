@@ -1,11 +1,14 @@
 name: gophermart-api
 
 services:
-  api:
-    build: ..
+  gophermart-service:
+    image: gophermart:latest
+    build:
+      context: ../
+      dockerfile: ./docker/Dockerfile
     ports:
       - 8080:8080
-    restart: on-failure:10
+    restart: on-failure:5
     environment:
       SECRET_KEY: ${APP_SECRET_KEY}
       DATABASE_URI: postgresql://${POSTGRES_APP_USER}:${POSTGRES_APP_PASS}@postgres:5432/${POSTGRES_APP_DB}

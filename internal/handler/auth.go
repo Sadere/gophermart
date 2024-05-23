@@ -1,24 +1,21 @@
 package handler
 
 import (
-	"context"
-	"database/sql"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/Sadere/gophermart/internal/auth"
 	"github.com/Sadere/gophermart/internal/config"
 	"github.com/Sadere/gophermart/internal/model"
-	"github.com/Sadere/gophermart/internal/repository"
+	"github.com/Sadere/gophermart/internal/service"
 	"github.com/gin-gonic/gin"
 )
 
 type AuthHandler struct {
-	userRepo repository.UserRepository
-	config   config.Config
+	userService *service.UserService
+	config      config.Config
 }
 
 type AuthRequest struct {
@@ -26,10 +23,10 @@ type AuthRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
-func NewAuthHandler(userRepo repository.UserRepository, config config.Config) *AuthHandler {
+func NewAuthHandler(userService *service.UserService, config config.Config) *AuthHandler {
 	return &AuthHandler{
-		userRepo: userRepo,
-		config:   config,
+		userService: userService,
+		config:      config,
 	}
 }
 
@@ -43,42 +40,25 @@ func (u *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	_, err := u.userRepo.GetUserByLogin(context.Background(), request.Login)
+	// Регистрируем юзера
+	newUser, err := u.userService.RegisterUser(request.Login, request.Password)
 
-	// Провреяем существует ли пользователь с таким логином
-	if err == nil || !errors.Is(err, sql.ErrNoRows) {
-		c.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("user with login '%s' has already registered", request.Login)})
-		return
+	// Проверяем существует ли юзер с таким логином
+	if errors.Is(err, &service.ErrUserExists{Login: request.Login}) {
+		c.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": err.Error()})
 	}
 
-	// Создаем юзера
-	passwordHash, err := auth.HashPassword(request.Password)
+	// Обработка остальных ошибок
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "failed to generate password hash"})
-		return
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
 
-	newUser := model.User{
-		Login:        request.Login,
-		PasswordHash: passwordHash,
-		CreatedAt:    time.Now(),
-	}
-
-	var newUserID uint64
-	newUserID, err = u.userRepo.CreateUser(context.Background(), newUser)
-
-	if err != nil {
-		slog.Error("failed to create user: ", err)
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "failed to create user"})
-		return
-	}
-
-	u.authUser(newUserID, c)
+	// Успешная аутентификация нового юзера
+	u.authUser(newUser.ID, c)
 }
 
 func (u *AuthHandler) Login(c *gin.Context) {
 	request := AuthRequest{}
-	badCredMsg := "bad credentials"
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
@@ -87,22 +67,22 @@ func (u *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	user, err := u.userRepo.GetUserByLogin(context.Background(), request.Login)
+	// Пытаемся залогиниться
+	user, err := u.userService.LoginUser(request.Login, request.Password)
 
-	if errors.Is(err, sql.ErrNoRows) {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-			"error": badCredMsg,
-		})
+	// Неверные данные для авторизации
+	if errors.Is(err, service.ErrBadCredentials) {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
-	if !auth.CheckPassword(user.PasswordHash, request.Password) {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-			"error": badCredMsg,
-		})
+	// Остальные ошибки
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	// Успешная аутентификация
 	u.authUser(user.ID, c)
 }
 
@@ -116,4 +96,24 @@ func (u *AuthHandler) authUser(userID uint64, c *gin.Context) {
 
 	c.Header("Authorization", fmt.Sprintf("Bearer %s", token))
 	c.Status(http.StatusOK)
+}
+
+func getCurrentUser(c *gin.Context) (model.User, error) {
+	var currentUser model.User
+
+	errCurrentUser := errors.New("failed to retrieve current user")
+
+	user, ok := c.Get("user")
+
+	if !ok {
+		return currentUser, errCurrentUser
+	}
+
+	currentUser, ok = user.(model.User)
+
+	if !ok {
+		return currentUser, errCurrentUser
+	}
+
+	return currentUser, nil
 }

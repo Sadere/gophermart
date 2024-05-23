@@ -8,7 +8,7 @@ import (
 )
 
 type UserRepository interface {
-	CreateUser(ctx context.Context, user model.User) (uint64, error)
+	Create(ctx context.Context, user model.User) (uint64, error)
 	GetUserByID(ctx context.Context, ID uint64) (model.User, error)
 	GetUserByLogin(ctx context.Context, login string) (model.User, error)
 }
@@ -24,7 +24,7 @@ func NewPgUserRepository(db *sqlx.DB) UserRepository {
 }
 
 // Creates new user and returns new user id
-func (r *PgUserRepository) CreateUser(ctx context.Context, user model.User) (uint64, error) {
+func (r *PgUserRepository) Create(ctx context.Context, user model.User) (uint64, error) {
 	var newUserID uint64
 
 	result := r.db.QueryRowContext(ctx, "INSERT INTO users (login, password, created_at) VALUES ($1, $2, $3) RETURNING id",
