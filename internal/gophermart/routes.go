@@ -19,6 +19,10 @@ func (g *GopherMart) SetupRoutes(r *gin.Engine, db *sqlx.DB) {
 	orderService := service.NewOrderService(orderRepo)
 	orderHandler := handler.NewOrderHandler(orderService)
 
+	balanceRepo := repository.NewPgBalanceRepository(db)
+	balanceService := service.NewBalanceService(orderRepo, balanceRepo)
+	balanceHandler := handler.NewBalanceHandler(balanceService)
+
 	apiMiddleware := middleware.NewMiddleware(userRepo)
 
 	api := r.Group("/api")
@@ -27,11 +31,18 @@ func (g *GopherMart) SetupRoutes(r *gin.Engine, db *sqlx.DB) {
 		api.POST("/user/login", userHandler.Login)
 	}
 
-	authRoutes := api.Group("")
+	// Методы, доступные только авторизованным пользователям
+	apiAuthRoutes := api.Group("")
 
-	authRoutes.Use(apiMiddleware.AuthCheck([]byte(g.config.SecretKey)))
+	apiAuthRoutes.Use(apiMiddleware.AuthCheck([]byte(g.config.SecretKey)))
 	{
-		authRoutes.POST("/user/orders", orderHandler.SaveOrder)
-		authRoutes.GET("/user/orders", middleware.JSON(), orderHandler.ListOrders)
+		// Orders
+		apiAuthRoutes.POST("/user/orders", orderHandler.SaveOrder)
+		apiAuthRoutes.GET("/user/orders", middleware.JSON(), orderHandler.ListOrders)
+
+		// Balance
+		apiAuthRoutes.POST("/user/balance/withdraw", balanceHandler.RegisterWithdraw)
+		apiAuthRoutes.GET("/user/withdrawals", balanceHandler.ListUserWithdrawals)
+		apiAuthRoutes.GET("/user/balance", balanceHandler.GetUserBalance)
 	}
 }

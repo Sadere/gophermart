@@ -45,7 +45,7 @@ func (r *PgUserRepository) Create(ctx context.Context, user model.User) (uint64,
 func (r *PgUserRepository) GetUserByID(ctx context.Context, ID uint64) (model.User, error) {
 	var user model.User
 
-	err := r.db.QueryRowxContext(ctx, "SELECT * FROM users WHERE id = $1", ID).StructScan(&user)
+	err := r.db.QueryRowxContext(ctx, "SELECT id, login, created_at, password FROM users WHERE id = $1", ID).StructScan(&user)
 
 	return user, err
 }
@@ -53,7 +53,7 @@ func (r *PgUserRepository) GetUserByID(ctx context.Context, ID uint64) (model.Us
 func (r *PgUserRepository) GetUserByLogin(ctx context.Context, login string) (model.User, error) {
 	var user model.User
 
-	err := r.db.QueryRowxContext(ctx, "SELECT * FROM users WHERE login = $1", login).StructScan(&user)
+	err := r.db.QueryRowxContext(ctx, "SELECT id, login, created_at, password FROM users WHERE login = $1", login).StructScan(&user)
 
 	return user, err
 }

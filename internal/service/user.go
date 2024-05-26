@@ -44,10 +44,14 @@ func NewUserService(userRepo repository.UserRepository) *UserService {
 
 func (s *UserService) RegisterUser(login string, password string) (model.User, error) {
 	var newUser model.User
-	_, err := s.userRepo.GetUserByLogin(context.Background(), login)
+	user, err := s.userRepo.GetUserByLogin(context.Background(), login)
 
 	// Проверяем существует ли пользователь с таким логином
-	if err == nil || !errors.Is(err, sql.ErrNoRows) {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return newUser, err
+	}
+
+	if user.ID != 0 {
 		return newUser, &ErrUserExists{Login: login}
 	}
 

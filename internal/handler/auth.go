@@ -46,11 +46,13 @@ func (u *AuthHandler) Register(c *gin.Context) {
 	// Проверяем существует ли юзер с таким логином
 	if errors.Is(err, &service.ErrUserExists{Login: request.Login}) {
 		c.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": err.Error()})
+		return
 	}
 
 	// Обработка остальных ошибок
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 
 	// Успешная аутентификация нового юзера
