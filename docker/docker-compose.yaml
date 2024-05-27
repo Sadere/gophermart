@@ -12,6 +12,7 @@ services:
     environment:
       SECRET_KEY: ${APP_SECRET_KEY}
       DATABASE_URI: postgresql://${POSTGRES_APP_USER}:${POSTGRES_APP_PASS}@postgres:5432/${POSTGRES_APP_DB}
+      ACCRUAL_SYSTEM_ADDRESS: ${ACCRUAL_HOST}:${ACCRUAL_PORT}
     depends_on:
       - postgres
     networks:
