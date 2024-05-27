@@ -16,6 +16,7 @@ type BalanceRepository interface {
 	Withdraw(ctx context.Context, withdraw model.Withdrawal) error
 	GetUserWithdrawals(ctx context.Context, userID uint64) ([]model.Withdrawal, error)
 	GetUserBalance(ctx context.Context, userID uint64) (*model.UserBalance, error)
+	Deposit(ctx context.Context, userID uint64, sum float64) error
 }
 
 type PgBalanceRepository struct {
@@ -31,23 +32,15 @@ func NewPgBalanceRepository(db *sqlx.DB) BalanceRepository {
 func (r *PgBalanceRepository) Withdraw(ctx context.Context, withdraw model.Withdrawal) error {
 	err := database.WrapTx(ctx, r.db, func(ctx context.Context, tx *sqlx.Tx) error {
 		// Блокируем баланс пользователя
+		var balance float64
 		userQuery := "SELECT balance FROM users WHERE id = $1 FOR UPDATE"
-		_, err := r.db.ExecContext(ctx, userQuery, withdraw.UserID)
+		err := r.db.QueryRowContext(ctx, userQuery, withdraw.UserID).Scan(&balance)
 
 		if err != nil {
 			return err
 		}
 
-		// Проверяем возможность вывести средства и блочим заказ
-		var accrual float64
-		orderQuery := "SELECT accrual FROM orders WHERE id = $1 FOR UPDATE"
-		err = r.db.QueryRowContext(ctx, orderQuery, withdraw.OrderID).Scan(&accrual)
-
-		if err != nil {
-			return err
-		}
-
-		if withdraw.Amount > accrual {
+		if withdraw.Amount > balance {
 			return ErrInsufficientFunds
 		}
 
@@ -59,24 +52,16 @@ func (r *PgBalanceRepository) Withdraw(ctx context.Context, withdraw model.Withd
 			return err
 		}
 
-		// Снимаем баланс баллов заказа
-		updateOrderQuery := "UPDATE orders SET accrual = accrual - $1 WHERE id = $2"
-		_, err = r.db.ExecContext(ctx, updateOrderQuery, withdraw.Amount, withdraw.OrderID)
-
-		if err != nil {
-			return err
-		}
-
 		// Добавляем запись о выводе средств
 		insertWithdrawalQuery := `INSERT INTO withdrawals
-			(user_id, order_id, created_at, amount)
+			(user_id, number, created_at, amount)
 				VALUES
 			($1, $2, $3, $4)`
 		_, err = r.db.ExecContext(
 			ctx,
 			insertWithdrawalQuery,
 			withdraw.UserID,
-			withdraw.OrderID,
+			withdraw.Number,
 			time.Now(),
 			withdraw.Amount,
 		)
@@ -103,22 +88,13 @@ func (r *PgBalanceRepository) GetUserWithdrawals(ctx context.Context, userID uin
 
 	selectWithdrawalsQuery := `
 		SELECT
-			w.id,
-			w.user_id,
-			w.order_id,
-			w.created_at,
-			w.amount,
-
-			o.id AS "order.id",
-			o.user_id AS "order.user_id",
-			o.created_at AS "order.created_at",
-			o.number AS "order.number",
-			o.status AS "order.status",
-			o.accrual AS "order.accrual"
-
-		FROM withdrawals w
-		JOIN orders o ON o.id = w.order_id
-		WHERE w.user_id = $1
+			id,
+			user_id,
+			number,
+			created_at,
+			amount
+		FROM withdrawals
+		WHERE user_id = $1
 	`
 	err := r.db.SelectContext(
 		ctx,
@@ -144,4 +120,15 @@ func (r *PgBalanceRepository) GetUserBalance(ctx context.Context, userID uint64)
 	}
 
 	return &balance, nil
+}
+
+func (r *PgBalanceRepository) Deposit(ctx context.Context, userID uint64, sum float64) error {
+	_, err := r.db.ExecContext(
+		ctx,
+		"UPDATE users SET balance = balance + $1 WHERE id = $2",
+		sum,
+		userID,
+	)
+
+	return err
 }

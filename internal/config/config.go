@@ -9,9 +9,11 @@ import (
 )
 
 type Config struct {
-	Address     structs.NetAddress // Адрес сервера
-	PostgresDSN string             // DSN строка для подключения к бд
-	SecretKey   string             // Секретный ключ для подписи JWT токенов
+	Address      structs.NetAddress // Адрес сервера
+	PostgresDSN  string             // DSN строка для подключения к бд
+	SecretKey    string             // Секретный ключ для подписи JWT токенов
+	AccrualAddr  structs.NetAddress // Адрес сервиса accrual
+	PullInterval int                // Интервал опроса accrual в секундах
 }
 
 func NewConfig() Config {
@@ -24,6 +26,8 @@ func NewConfig() Config {
 
 	flag.Var(&newConfig.Address, "a", "Адрес сервера")
 	flag.StringVar(&newConfig.PostgresDSN, "d", "", "DSN для postgresql")
+	flag.Var(&newConfig.AccrualAddr, "r", "Адрес сервиса accrual")
+	flag.IntVar(&newConfig.PullInterval, "i", 10, "Интервал опроса accrual в секундах")
 	flag.Parse()
 
 	// Конфиг из переменных окружений
@@ -32,6 +36,13 @@ func NewConfig() Config {
 		err := newConfig.Address.Set(envAddr)
 		if err != nil {
 			log.Fatalf("Invalid server address supplied, RUN_ADDRESS = %s", envAddr)
+		}
+	}
+
+	if envAccAddr := os.Getenv("ACCRUAL_SYSTEM_ADDRESS"); len(envAccAddr) > 0 {
+		err := newConfig.AccrualAddr.Set(envAccAddr)
+		if err != nil {
+			log.Fatalf("Invalid accrual address supplied, ACCRUAL_SYSTEM_ADDRESS = %s", envAccAddr)
 		}
 	}
 
@@ -45,6 +56,9 @@ func NewConfig() Config {
 	}
 
 	newConfig.SecretKey = envSecret
+
+	log.Println("server address: ", newConfig.Address)
+	log.Println("accrual address: ", newConfig.AccrualAddr)
 
 	return newConfig
 }

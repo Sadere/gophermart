@@ -12,6 +12,8 @@ type OrderRepository interface {
 	Create(ctx context.Context, order model.Order) (uint64, error)
 	GetOrderByNumber(ctx context.Context, number string) (model.Order, error)
 	GetOrdersByUser(ctx context.Context, userID uint64) ([]model.Order, error)
+	GetPendingOrders(ctx context.Context) ([]model.Order, error)
+	UpdateOrder(ctx context.Context, order model.Order) error
 }
 
 type PgOrderRepository struct {
@@ -61,4 +63,29 @@ func (r *PgOrderRepository) GetOrdersByUser(ctx context.Context, userID uint64) 
 	}
 
 	return result, nil
+}
+
+func (r *PgOrderRepository) GetPendingOrders(ctx context.Context) ([]model.Order, error) {
+	var pendingOrders []model.Order
+
+	sql := "SELECT * FROM orders WHERE status = $1"
+	err := r.db.SelectContext(ctx, &pendingOrders, sql, model.OrderNew)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return pendingOrders, nil
+}
+
+func (r *PgOrderRepository) UpdateOrder(ctx context.Context, order model.Order) error {
+	_, err := r.db.ExecContext(
+		ctx,
+		"UPDATE orders SET status = $1, accrual = $2 WHERE id = $3",
+		order.Status,
+		order.Accrual,
+		order.ID,
+	)
+
+	return err
 }

@@ -19,3 +19,9 @@ type Order struct {
 	Status    OrderStatus     `json:"status" db:"status"`
 	Accrual   *float64        `json:"accrual,omitempty" db:"accrual"`
 }
+
+type AccOrder struct {
+	Number  string   `json:"number"`
+	Status  string   `json:"status"`
+	Accrual *float64 `json:"accrual,omitempty"`
+}

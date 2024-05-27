@@ -19,6 +19,7 @@ func (addr *NetAddress) String() string {
 }
 
 func (addr *NetAddress) Set(flagValue string) error {
+	flagValue = strings.Replace(flagValue, "http://", "", 1)
 	addrParts := strings.Split(flagValue, ":")
 
 	if len(addrParts) == 2 {

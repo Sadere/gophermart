@@ -16,6 +16,20 @@ services:
       - postgres
     networks:
       - gophermart-network
+      
+  accrual-service:
+    image: accrual:latest
+    build:
+      context: ../
+      dockerfile: ./docker/Dockerfile.accrual
+    ports:
+      - ${ACCRUAL_PORT}:${ACCRUAL_PORT}
+    restart: on-failure:5
+    environment:
+      RUN_ADDRESS: ${ACCRUAL_HOST}:${ACCRUAL_PORT}
+      DATABASE_URI: postgresql://${ACCRUAL_USER}:${ACCRUAL_PASS}@postgres:5432/${ACCRUAL_DB}
+    networks:
+      - gophermart-network
 
 networks:
   gophermart-network:

@@ -43,8 +43,8 @@ func (h *BalanceHandler) RegisterWithdraw(c *gin.Context) {
 
 	err = h.balanceService.RegisterWithdraw(currentUser.ID, request.Order, request.Sum)
 
-	// Не найден номер заказа
-	if errors.Is(err, service.ErrOrderNotFound) {
+	// Невалидный номер заказа на вывод
+	if errors.Is(err, service.ErrOrderInvalidNumber) {
 		c.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
 		return
 	}
@@ -95,7 +95,7 @@ func (h *BalanceHandler) ListUserWithdrawals(c *gin.Context) {
 
 	for _, withdrawal := range withdrawals {
 		response = append(response, ListWithdrawalItem{
-			Order:       withdrawal.Order.Number,
+			Order:       withdrawal.Number,
 			Sum:         withdrawal.Amount,
 			ProcessedAt: withdrawal.CreatedAt,
 		})

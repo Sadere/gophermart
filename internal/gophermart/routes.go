@@ -3,27 +3,16 @@ package gophermart
 import (
 	"github.com/Sadere/gophermart/internal/handler"
 	"github.com/Sadere/gophermart/internal/middleware"
-	"github.com/Sadere/gophermart/internal/repository"
-	"github.com/Sadere/gophermart/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
 )
 
 func (g *GopherMart) SetupRoutes(r *gin.Engine, db *sqlx.DB) {
+	userHandler := handler.NewAuthHandler(g.userService, g.config)
+	orderHandler := handler.NewOrderHandler(g.orderService)
+	balanceHandler := handler.NewBalanceHandler(g.balanceService)
 
-	userRepo := repository.NewPgUserRepository(db)
-	userService := service.NewUserService(userRepo)
-	userHandler := handler.NewAuthHandler(userService, g.config)
-
-	orderRepo := repository.NewPgOrderRepository(db)
-	orderService := service.NewOrderService(orderRepo)
-	orderHandler := handler.NewOrderHandler(orderService)
-
-	balanceRepo := repository.NewPgBalanceRepository(db)
-	balanceService := service.NewBalanceService(orderRepo, balanceRepo)
-	balanceHandler := handler.NewBalanceHandler(balanceService)
-
-	apiMiddleware := middleware.NewMiddleware(userRepo)
+	apiMiddleware := middleware.NewMiddleware(g.userRepo)
 
 	api := r.Group("/api")
 	{

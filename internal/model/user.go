@@ -10,6 +10,6 @@ type User struct {
 }
 
 type UserBalance struct {
-	Balance   float64 `json:"balance" db:"balance"`
+	Balance   float64 `json:"current" db:"balance"`
 	Withdrawn float64 `json:"withdrawn" db:"withdrawn"`
 }
