@@ -184,6 +184,16 @@ func TestAuthHandlers(t *testing.T) {
 				statusCode:          http.StatusUnauthorized,
 			},
 		},
+		{
+			name:    "malformed json",
+			request: "/api/user/login",
+			method:  http.MethodPost,
+			body:    []byte(`"login":"registered_user","password":"test_pw"`),
+			want: want{
+				authorizationHeader: false,
+				statusCode:          http.StatusBadRequest,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

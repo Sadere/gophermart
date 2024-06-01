@@ -50,6 +50,10 @@ func authRequest(c *gin.Context) (*AuthRequest, error) {
 		return nil, fmt.Errorf("failed to parse request: %v", err)
 	}
 
+	if len(request.Login) == 0 || len(request.Password) == 0 {
+		return nil, errors.New("login and password can't be empty")
+	}
+
 	return request, nil
 }
 
