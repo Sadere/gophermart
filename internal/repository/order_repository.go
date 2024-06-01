@@ -68,8 +68,8 @@ func (r *PgOrderRepository) GetOrdersByUser(ctx context.Context, userID uint64) 
 func (r *PgOrderRepository) GetPendingOrders(ctx context.Context) ([]model.Order, error) {
 	var pendingOrders []model.Order
 
-	sql := "SELECT * FROM orders WHERE status = $1"
-	err := r.db.SelectContext(ctx, &pendingOrders, sql, model.OrderNew)
+	sql := "SELECT * FROM orders WHERE status IN ($1, $2)"
+	err := r.db.SelectContext(ctx, &pendingOrders, sql, model.OrderNew, model.OrderProcessing)
 
 	if err != nil {
 		return nil, err

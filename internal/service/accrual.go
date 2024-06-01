@@ -51,6 +51,16 @@ func (s *AccrualService) Pull() {
 		}
 
 		for _, order := range orders {
+			// Указываем, что заказ попал в обработку
+			if order.Status == model.OrderNew {
+				order.Status = model.OrderProcessing
+
+				err = s.orderRepo.UpdateOrder(context.Background(), order)
+				if err != nil {
+					log.Println("failed to update order: ", err)
+				}
+			}
+
 			accOrder, err := s.pullAccrual(order.Number)
 
 			if err != nil {
