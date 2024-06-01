@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/Sadere/gophermart/internal/model"
 	"github.com/Sadere/gophermart/internal/service"
 	"github.com/gin-gonic/gin"
+	"github.com/go-json-experiment/json"
 )
 
 type AuthHandler struct {
@@ -19,8 +21,8 @@ type AuthHandler struct {
 }
 
 type AuthRequest struct {
-	Login    string `json:"login" binding:"required"`
-	Password string `json:"password" binding:"required"`
+	Login    string `json:"login"`
+	Password string `json:"password"`
 }
 
 func NewAuthHandler(userService *service.UserService, config config.Config) *AuthHandler {
@@ -30,12 +32,32 @@ func NewAuthHandler(userService *service.UserService, config config.Config) *Aut
 	}
 }
 
-func (u *AuthHandler) Register(c *gin.Context) {
-	request := AuthRequest{}
+func authRequest(c *gin.Context) (*AuthRequest, error) {
+	request := &AuthRequest{}
 
-	if err := c.ShouldBindJSON(&request); err != nil {
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read request body: %v", err)
+	}
+
+	err = json.Unmarshal(
+		body,
+		request,
+	
+		json.RejectUnknownMembers(true),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse request: %v", err)
+	}
+
+	return request, nil
+}
+
+func (u *AuthHandler) Register(c *gin.Context) {
+	request, err := authRequest(c)
+	if err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"error": fmt.Sprintf("failed to parse request: %v", err),
+			"error": err.Error(),
 		})
 		return
 	}
@@ -60,11 +82,10 @@ func (u *AuthHandler) Register(c *gin.Context) {
 }
 
 func (u *AuthHandler) Login(c *gin.Context) {
-	request := AuthRequest{}
-
-	if err := c.ShouldBindJSON(&request); err != nil {
+	request, err := authRequest(c)
+	if err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"error": fmt.Sprintf("failed to parse request: %v", err),
+			"error": err.Error(),
 		})
 		return
 	}
