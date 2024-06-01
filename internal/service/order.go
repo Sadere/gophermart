@@ -59,7 +59,7 @@ func (s *OrderService) SaveOrderForUser(userID uint64, number string) (bool, err
 
 	// Проверяем кем был загружен заказ
 	if order.UserID != userID {
-		return false, ErrOrderExists
+		return true, ErrOrderExists
 	}
 
 	return true, nil
