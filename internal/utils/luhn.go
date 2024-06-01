@@ -2,6 +2,17 @@ package utils
 
 import "strconv"
 
+func CheckOnlyDigits(number string) error {
+	for i := 0; i < len(number); i += 1 {
+		_, err := strconv.Atoi(string(number[i]))
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func CheckLuhn(number string) bool {
 	sum := 0
 

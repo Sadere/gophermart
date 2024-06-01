@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/Sadere/gophermart/internal/service"
+	"github.com/Sadere/gophermart/internal/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -38,6 +39,12 @@ func (o *OrderHandler) SaveOrder(c *gin.Context) {
 	}
 
 	orderNumber := string(body)
+
+	err = utils.CheckOnlyDigits(orderNumber)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "order number must contain only digits"})
+		return
+	}
 
 	var isLoaded bool
 	isLoaded, err = o.orderService.SaveOrderForUser(currentUser.ID, orderNumber)
