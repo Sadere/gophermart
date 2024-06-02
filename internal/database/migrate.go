@@ -19,6 +19,12 @@ func MigrateUp(DSN string) error {
 	}
 	defer db.Close()
 
+	// Пинг
+	err = db.Ping()
+	if err != nil {
+		return err
+	}
+
 	goose.SetBaseFS(migrations.Migrations)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

@@ -1,0 +1,12 @@
+FROM golang:1.22
+
+RUN mkdir /app
+ADD . /app
+
+WORKDIR /app
+
+COPY cmd/accrual/accrual_linux_amd64 ./
+
+EXPOSE ${ACCRUAL_PORT}
+
+CMD [ "/app/accrual_linux_amd64" ]

@@ -3,20 +3,16 @@ package gophermart
 import (
 	"github.com/Sadere/gophermart/internal/handler"
 	"github.com/Sadere/gophermart/internal/middleware"
-	"github.com/Sadere/gophermart/internal/repository"
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
 )
 
 func (g *GopherMart) SetupRoutes(r *gin.Engine, db *sqlx.DB) {
+	userHandler := handler.NewAuthHandler(g.userService, g.config)
+	orderHandler := handler.NewOrderHandler(g.orderService)
+	balanceHandler := handler.NewBalanceHandler(g.balanceService)
 
-	userRepo := repository.NewPgUserRepository(db)
-	userHandler := handler.NewAuthHandler(userRepo, g.config)
-
-	orderRepo := repository.NewPgOrderRepository(db)
-	orderHandler := handler.NewOrderHandler(orderRepo, g.config)
-
-	apiMiddleware := middleware.NewMiddleware(userRepo)
+	apiMiddleware := middleware.NewMiddleware(g.userRepo)
 
 	api := r.Group("/api")
 	{
@@ -24,11 +20,18 @@ func (g *GopherMart) SetupRoutes(r *gin.Engine, db *sqlx.DB) {
 		api.POST("/user/login", userHandler.Login)
 	}
 
-	authRoutes := api.Group("")
+	// Методы, доступные только авторизованным пользователям
+	apiAuthRoutes := api.Group("")
 
-	authRoutes.Use(apiMiddleware.AuthCheck([]byte(g.config.SecretKey)))
+	apiAuthRoutes.Use(apiMiddleware.AuthCheck([]byte(g.config.SecretKey)))
 	{
-		authRoutes.POST("/user/orders", orderHandler.SaveOrder)
-		// TODO: implement orders, withdrawals
+		// Orders
+		apiAuthRoutes.POST("/user/orders", orderHandler.SaveOrder)
+		apiAuthRoutes.GET("/user/orders", middleware.JSON(), orderHandler.ListOrders)
+
+		// Balance
+		apiAuthRoutes.POST("/user/balance/withdraw", balanceHandler.RegisterWithdraw)
+		apiAuthRoutes.GET("/user/withdrawals", balanceHandler.ListUserWithdrawals)
+		apiAuthRoutes.GET("/user/balance", balanceHandler.GetUserBalance)
 	}
 }

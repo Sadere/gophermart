@@ -8,3 +8,8 @@ type User struct {
 	Login        string    `json:"login" db:"login"`
 	PasswordHash string    `json:"-" db:"password"`
 }
+
+type UserBalance struct {
+	Balance   float64 `json:"current" db:"balance"`
+	Withdrawn float64 `json:"withdrawn" db:"withdrawn"`
+}
