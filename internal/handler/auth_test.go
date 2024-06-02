@@ -152,6 +152,16 @@ func TestAuthHandlers(t *testing.T) {
 				statusCode:          http.StatusBadRequest,
 			},
 		},
+		{
+			name:    "unexpected error",
+			request: "/api/user/login",
+			method:  http.MethodPost,
+			body:    []byte(`{"login":"error_user","password":"test_pw"}`),
+			want: want{
+				authorizationHeader: false,
+				statusCode:          http.StatusInternalServerError,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -4,8 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/Sadere/gophermart/internal/model"
+	"github.com/Sadere/gophermart/internal/structs"
 )
 
 // Test user repo
@@ -120,6 +122,71 @@ func (r *TestOrderRepository) GetPendingOrders(ctx context.Context) ([]model.Ord
 }
 
 func (r *TestOrderRepository) UpdateOrder(ctx context.Context, order model.Order) error {
+
+	return nil
+}
+
+// Test Balance repo
+
+type TestBalanceRepository struct{}
+
+func NewTestBalanceRepository() BalanceRepository {
+	return &TestBalanceRepository{}
+}
+
+func (r *TestBalanceRepository) Withdraw(ctx context.Context, withdraw model.Withdrawal) error {
+	if withdraw.UserID == 444 {
+		return ErrInsufficientFunds
+	}
+
+	if withdraw.UserID == 555 {
+		return errors.New("Withdraw() test error")
+	}
+
+	return nil
+}
+
+func (r *TestBalanceRepository) GetUserWithdrawals(ctx context.Context, userID uint64) ([]model.Withdrawal, error) {
+	var withdrawals []model.Withdrawal
+
+	if userID == 111 {
+		withdrawals = append(withdrawals, model.Withdrawal{
+			ID:     1,
+			UserID: 111,
+			Number: "78477",
+			CreatedAt: structs.RFCTime{
+				Time: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+			},
+			Amount: 200,
+		})
+	}
+
+	if userID == 222 {
+		return nil, errors.New("GetUserWithdrawals() test error")
+	}
+
+	return withdrawals, nil
+}
+
+func (r *TestBalanceRepository) GetUserBalance(ctx context.Context, userID uint64) (*model.UserBalance, error) {
+	var balance model.UserBalance
+
+	balance.Balance = 200
+	balance.Withdrawn = 200
+
+	if userID == 222 {
+		balance.Balance = 0
+		balance.Withdrawn = 0
+	}
+
+	if userID == 333 {
+		return nil, errors.New("GetUserBalance() test error")
+	}
+
+	return &balance, nil
+}
+
+func (r *TestBalanceRepository) Deposit(ctx context.Context, userID uint64, sum float64) error {
 
 	return nil
 }
