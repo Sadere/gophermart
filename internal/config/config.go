@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"flag"
 	"log"
 	"os"
@@ -16,7 +17,15 @@ type Config struct {
 	PullInterval int                // Интервал опроса accrual в секундах
 }
 
-func NewConfig() Config {
+const DefaultPullInterval = 10
+
+func NewConfig(args []string) (Config, error) {
+	flags := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+
+	var buf bytes.Buffer
+
+	flags.SetOutput(&buf)
+
 	newConfig := Config{
 		Address: structs.NetAddress{
 			Host: "",
@@ -24,11 +33,14 @@ func NewConfig() Config {
 		},
 	}
 
-	flag.Var(&newConfig.Address, "a", "Адрес сервера")
-	flag.StringVar(&newConfig.PostgresDSN, "d", "", "DSN для postgresql")
-	flag.Var(&newConfig.AccrualAddr, "r", "Адрес сервиса accrual")
-	flag.IntVar(&newConfig.PullInterval, "i", 10, "Интервал опроса accrual в секундах")
-	flag.Parse()
+	flags.Var(&newConfig.Address, "a", "Адрес сервера")
+	flags.StringVar(&newConfig.PostgresDSN, "d", "", "DSN для postgresql")
+	flags.Var(&newConfig.AccrualAddr, "r", "Адрес сервиса accrual")
+	flags.IntVar(&newConfig.PullInterval, "i", DefaultPullInterval, "Интервал опроса accrual в секундах")
+	err := flags.Parse(args)
+	if err != nil {
+		return newConfig, err
+	}
 
 	// Конфиг из переменных окружений
 
@@ -60,5 +72,5 @@ func NewConfig() Config {
 	log.Println("server address: ", newConfig.Address)
 	log.Println("accrual address: ", newConfig.AccrualAddr)
 
-	return newConfig
+	return newConfig, nil
 }

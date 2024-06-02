@@ -92,7 +92,12 @@ func (g *GopherMart) InitServices(db *sqlx.DB) {
 
 func Run() {
 	app := &GopherMart{}
-	app.config = config.NewConfig()
+	conf, err := config.NewConfig(os.Args[1:])
+	if err != nil {
+		log.Fatalln("failed to parse cmd line flags", err)
+	}
+
+	app.config = conf
 
 	app.Start()
 }
