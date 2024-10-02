@@ -2,9 +2,6 @@ package handler
 
 import (
 	"bytes"
-	"context"
-	"database/sql"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -12,49 +9,11 @@ import (
 
 	"github.com/Sadere/gophermart/internal/auth"
 	"github.com/Sadere/gophermart/internal/config"
-	"github.com/Sadere/gophermart/internal/model"
+	"github.com/Sadere/gophermart/internal/repository"
+	"github.com/Sadere/gophermart/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
-
-type TestUserRepository struct {
-	registeredUserPwHash string
-}
-
-func (tu *TestUserRepository) CreateUser(ctx context.Context, user model.User) (uint64, error) {
-	if user.Login == "invalid" {
-		return 0, errors.New("test error")
-	}
-
-	return 1000, nil
-}
-
-func (tu *TestUserRepository) GetUserByID(ctx context.Context, ID uint64) (model.User, error) {
-	var user model.User
-
-	if ID == 0 {
-		return user, sql.ErrNoRows
-	}
-
-	return model.User{
-		ID:    111,
-		Login: "test_user",
-	}, nil
-}
-
-func (tu *TestUserRepository) GetUserByLogin(ctx context.Context, login string) (model.User, error) {
-	var user model.User
-
-	if login == "registered_user" {
-		return model.User{
-			ID:           111,
-			Login:        "registered_user",
-			PasswordHash: tu.registeredUserPwHash,
-		}, nil
-	}
-
-	return user, sql.ErrNoRows
-}
 
 func TestAuthHandlers(t *testing.T) {
 	testPassword := "test_password_123"
@@ -62,9 +21,11 @@ func TestAuthHandlers(t *testing.T) {
 
 	assert.NoError(t, err, "Failed to generate test password")
 
-	authHandler := NewAuthHandler(&TestUserRepository{
-		registeredUserPwHash: registeredUserPwHash,
-	}, config.Config{})
+	repo := &repository.TestUserRepository{
+		RegisteredUserPwHash: registeredUserPwHash,
+	}
+	service := service.NewUserService(repo)
+	authHandler := NewAuthHandler(service, config.Config{})
 
 	r := gin.New()
 	r.POST("/api/user/register", authHandler.Register)
@@ -179,6 +140,26 @@ func TestAuthHandlers(t *testing.T) {
 			want: want{
 				authorizationHeader: false,
 				statusCode:          http.StatusUnauthorized,
+			},
+		},
+		{
+			name:    "malformed json",
+			request: "/api/user/login",
+			method:  http.MethodPost,
+			body:    []byte(`"login":"registered_user","password":"test_pw"`),
+			want: want{
+				authorizationHeader: false,
+				statusCode:          http.StatusBadRequest,
+			},
+		},
+		{
+			name:    "unexpected error",
+			request: "/api/user/login",
+			method:  http.MethodPost,
+			body:    []byte(`{"login":"error_user","password":"test_pw"}`),
+			want: want{
+				authorizationHeader: false,
+				statusCode:          http.StatusInternalServerError,
 			},
 		},
 	}
